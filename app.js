@@ -183,7 +183,8 @@ async function js(u) { const r = await fetch(u); if (!r.ok) throw new Error(u); 
 async function cargar() {
   [M, LUG, VEC, IDX, CRE, PASES] = await Promise.all([js('datos/nodos.json'), js('datos/lugares.json'), js('datos/vectores.json'), js('bloques/indice.json'), js('datos/crecidas.json'), js('datos/pases.json')]);
   OBS = await fetch('obs/indice.json').then(r => r.ok ? r.json() : null).catch(() => null);
-  EXT = await fetch('datos/caudal_externo.json?t=' + Date.now()).then(r => r.ok ? r.json() : null).catch(() => null);   // lo escribe el guion diario
+  const directo = caudalSNIRH();   // no detiene la carga del visor
+  EXT = await fetch('datos/caudal_externo.json?t=' + Date.now()).then(r => r.ok ? r.json() : null).catch(() => null);   // último dato guardado
   if (OBS) { for (const k in OBS) OBS[k] = new Set(OBS[k]); const n0 = PASES.length; PASES = PASES.filter(p => OBS[p.pase]); if (PASES.length < n0) NOTA_FECHAS = [PASES.length, n0]; }
   else NOTA_FECHAS = 'local';
   const [id, p8, l8, u8, atr, hab, pob] = await Promise.all([bin('datos/celdas_id.bin', Int32Array), bin('datos/celdas_p.bin', Uint8Array), bin('datos/celdas_L.bin', Uint8Array),
@@ -206,6 +207,8 @@ async function cargar() {
     for (let dr = -RADIO_CERCA; dr <= RADIO_CERCA; dr++) for (let dc = -RADIO_CERCA; dc <= RADIO_CERCA; dc++) { const r = c.r + dr, cc = c.c + dc; if (r < 0 || cc < 0 || r >= H || cc >= W) continue; const j = INDEX[r * W + cc]; if (j >= 0 && FUENTE[j]) c.celdasA.push(j); }
   }
   curvaLlanuraDatos(); construirMapa(); controles(); mostrarCaudalExterno(); fijarQ(900);
+  directo.then(o => { if (!o || (EXT && EXT.observado && o.fecha < EXT.observado.fecha)) return;
+    EXT = Object.assign({}, EXT, { observado: o }); mostrarCaudalExterno(); });
 }
 
 // ---------- caudal y nivel ----------
@@ -291,6 +294,25 @@ function estadoCP(c, n) { if (ST.Q < M.q_corte) return 0; if (inund(n, c.celdaA)
 // ---------- caudal externo: observado del día y pronósticos (sólo los que tienen el sesgo comprobado frente a Sánchez Cerro) ----------
 const fmtFecha = s => { const [a, m, d] = String(s).slice(0, 10).split('-'); return `${+d}-${tr('meses')[+m - 1]}-${a}`; };
 const fmtQ = q => q == null || !isFinite(q) ? '–' : q < 10 ? q.toFixed(1).replace('.', tr('coma')) : fmt(q);
+// consulta directa al SNIRH desde el navegador (el servicio admite peticiones de otras páginas: Access-Control-Allow-Origin *).
+// Los servidores de GitHub no llegan al SNIRH, así que el dato del día sale de aquí; si no responde, queda el último guardado.
+async function caudalSNIRH() {
+  const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 15000);
+  const leer = s => JSON.parse(s.replace(/"data":\s*}/g, '"data":[]}'));   // el servicio devuelve `"data":}` en un año vacío
+  try {
+    const r = await fetch('https://snirh.ana.gob.pe/visorPorCuenca/Principal.asmx/CaudalSerie', { method: 'POST', signal: ctl.signal,
+      headers: { 'Content-Type': 'application/json; charset=utf-8' }, body: JSON.stringify({ pIdEstacion: '1212', pIdOperador: '63' }) });
+    if (!r.ok) return null;
+    let d = leer(await r.text()).d; if (typeof d === 'string') d = leer(d);
+    const cfg = Array.isArray(d) ? d[0] : d; let mejor = null;
+    for (const s of (cfg && cfg.series) || []) {
+      const m = /^(\d{4})-(\d{4})$/.exec(String(s.name || '')); if (!m) continue;   // años hidrológicos, desde el 1 de septiembre
+      (s.data || []).forEach((v, i) => { if (v === null || v === '' || !isFinite(v)) return; const f = Date.UTC(+m[1], 8, 1 + i); if (!mejor || f > mejor[0]) mejor = [f, +v]; });
+    }
+    return mejor && { fuente: 'ANA, SNIRH, estación Puente Sánchez Cerro', fecha: new Date(mejor[0]).toISOString().slice(0, 10),
+      Q: Math.round(mejor[1] * 100) / 100, tipo: 'medio diario', modo: 'consulta directa' };
+  } catch (e) { return null; } finally { clearTimeout(t); }
+}
 function mostrarCaudalExterno() {
   const el = $('caudal-ext'), o = EXT && EXT.observado, pr = ((EXT && EXT.pronosticos) || []).filter(p => p.sesgo_verificado === true);
   if (!o && !pr.length) { el.classList.add('oculto'); return; }

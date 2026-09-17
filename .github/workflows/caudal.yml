@@ -1,5 +1,8 @@
 name: Caudal del día (SNIRH)
 
+# El visor pide el caudal del día al SNIRH directamente desde el navegador de quien lo abre. Esta tarea sólo renueva el último
+# dato guardado (datos/caudal_externo.json), que el visor muestra si esa consulta falla. En la prueba del 17-sep-2026 el SNIRH
+# no respondió a los servidores de GitHub (tiempo de espera agotado): en ese caso la tarea termina sin cambiar nada.
 on:
   schedule:
     - cron: "0 13 * * *"      # 08:00 en Perú
@@ -11,9 +14,10 @@ permissions:
 jobs:
   actualizar:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - run: pip install requests

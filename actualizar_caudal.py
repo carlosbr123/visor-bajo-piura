@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Actualiza datos/caudal_externo.json con el último caudal medio diario de la estación Puente Sánchez Cerro publicado por el
 Observatorio del Agua de la ANA (SNIRH). Lo corre a diario la tarea programada de GitHub (.github/workflows/caudal.yml).
+El visor consulta además el SNIRH desde el navegador; este archivo es el respaldo que muestra cuando esa consulta falla.
 Conserva los pronósticos que ya tenga el archivo. Si el servicio no responde, no cambia nada."""
 import json, re, sys, time
 from datetime import date, datetime, timedelta, timezone
@@ -17,7 +18,9 @@ def ultimo():
     for intento in range(3):
         try:
             r = requests.post(URL, data=json.dumps({"pIdEstacion": ESTACION, "pIdOperador": OPERADOR}), headers=CAB, timeout=90)
-            r.raise_for_status(); d = r.json()["d"]; d = json.loads(d) if isinstance(d, str) else d
+            r.raise_for_status()
+            leer = lambda s: json.loads(re.sub(r'"data":\s*}', '"data":[]}', s))   # el servicio devuelve `"data":}` en un año vacío
+            d = leer(r.text)["d"]; d = leer(d) if isinstance(d, str) else d
             break
         except Exception as e:
             print("intento", intento + 1, "falló:", repr(e)[:150]); time.sleep(30)
