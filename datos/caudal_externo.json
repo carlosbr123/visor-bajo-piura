@@ -1,0 +1,11 @@
+{
+ "generado": "2026-09-17T09:12",
+ "observado": {
+  "fuente": "ANA, SNIRH, estación Puente Sánchez Cerro",
+  "fecha": "2026-09-16",
+  "Q": 0.0,
+  "tipo": "medio diario",
+  "modo": "servicio web del SNIRH (estación 1212, operador 63)"
+ },
+ "pronosticos": []
+}

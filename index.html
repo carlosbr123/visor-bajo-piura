@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Inundaciones del Bajo Piura</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M0 10q2-2 4 0t4 0 4 0 4 0v6H0z' fill='%231565c0'/%3E%3Cpath d='M0 6q2-2 4 0t4 0 4 0 4 0v2q-2 2-4 0t-4 0-4 0-4 0z' fill='%2364b5f6'/%3E%3C/svg%3E">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="lib/leaflet.css">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div id="mapa"></div>
+
+<aside id="tarjeta">
+  <header>
+    <h1>Inundaciones del Bajo Piura</h1>
+    <p class="sub">Qué zonas de la llanura se inundan según el caudal del río Piura en Puente Sánchez Cerro</p>
+  </header>
+  <div id="tabs"><button class="tab activa" data-tab="pred">Por caudal</button><button class="tab" data-tab="curva">Curva de la llanura</button><button class="tab" data-tab="comp">Comparar</button></div>
+
+  <section id="tab-pred" class="tab-cuerpo">
+    <div class="control">
+      <div class="etq">Caudal del río</div>
+      <div class="q-fila"><span id="q-valor" class="q-valor">900</span><span class="q-unid">m³/s</span><span id="q-alerta" class="chip">Alerta amarilla</span></div>
+      <input id="q-barra" type="range" min="0" max="1000" step="1" aria-label="Caudal">
+      <div class="marcas"><span style="left:0%">0</span><span style="left:15%">100</span><span style="left:50%">900</span><span style="left:62%">1 290</span><span style="left:78%">1 900</span><span style="left:100%">3 016</span></div>
+      <div class="rapidos">
+        <button data-q="300">300</button>
+        <button data-q="900" class="am">900 amarilla</button>
+        <button data-q="1290" class="na">1 290 naranja</button>
+        <button data-q="1900" class="ro">1 900 roja</button>
+        <button data-q="2204">2 204 (2017)</button>
+      </div>
+    </div>
+
+
+    <div id="caudal-ext" class="aviso ext oculto"></div>
+
+    <div id="aviso-q" class="aviso oculto"></div>
+    <div id="aviso-diques" class="aviso diques oculto">
+      <b>Tramo con diques.</b> Entre Piura y Cura Mori el río va entre diques y este mapa supone que resisten. No representa desbordes
+      dentro de la ciudad ni roturas de diques. En 2017 hubo ambos: el río se desbordó en Piura y Castilla el 27 de marzo y los diques de
+      Pedregal Chico, Narihualá y Cura Mori se rompieron el 3 de abril.
+      <button id="b-ver2017">Comparar con la inundación de 2017</button>
+    </div>
+
+    <div class="etq">Lo que puede inundarse con este caudal</div>
+    <section id="resumen">
+      <div class="caja"><div class="num" id="r-ha">–</div><div class="nom">hectáreas de la llanura</div><div class="det" id="r-ha-det"></div></div>
+      <div class="caja"><div class="num" id="r-cult">–</div><div class="nom">hectáreas de cultivo</div><div class="det" id="r-cult-det"></div></div>
+      <div class="caja"><div class="num" id="r-hab">–</div><div class="nom">personas</div><div class="det" id="r-hab-det"></div></div>
+      <div class="caja clic" id="caja-cp" title="Ver la lista"><div class="num" id="r-cp">–</div><div class="nom">centros poblados con su terreno en la zona</div><div class="det" id="r-cp-det"></div></div>
+    </section>
+
+    <div class="control capas">
+      <label><input type="checkbox" id="c-perm" checked> Río, lagunas y agua permanente</label>
+      <label><input type="checkbox" id="c-cp" checked> Centros poblados afectados</label>
+      <label><input type="checkbox" id="c-cp-todos"> Todos los centros poblados</label>
+      <label><input type="checkbox" id="c-dist"> Límites de distritos</label>
+    </div>
+  </section>
+
+  <section id="tab-curva" class="tab-cuerpo oculto">
+    <p class="ayuda">Hectáreas de la llanura que pueden inundarse según el caudal (azul) y estimación central del artículo (línea oscura). La línea discontinua marca el caudal elegido en «Por caudal»; las líneas de color, los niveles de alerta del COER; el rayado, la extrapolación.</p>
+    <div id="curva-llanura"></div>
+    <div id="curva-info" class="ayuda"></div>
+  </section>
+
+  <section id="tab-comp" class="tab-cuerpo oculto">
+    <p class="ayuda">El mapa azul del caudal elegido se mantiene. Elija una fuente para verla encima, en rojo; donde coinciden se ve morado.</p>
+    <div class="radios">
+      <label><input type="radio" name="comp" value="ninguna" checked> Ninguna</label>
+      <label><input type="radio" name="comp" value="emsr"> Inundación de marzo de 2017, cartografiada por Copernicus con otros satélites</label>
+      <label><input type="radio" name="comp" value="crecidas"> Agua vista por el satélite en las crecidas grandes (2017, 2023 y 2026) en las lagunas y la llanura sin estimación</label>
+      <label><input type="radio" name="comp" value="fecha"> Agua vista por el satélite en una fecha</label>
+      <select id="comp-fecha" class="oculto"></select>
+    </div>
+    <div id="comp-info" class="ayuda"></div>
+  </section>
+
+  <footer>
+    <div class="botones-pie"><button id="b-leer">Cómo leer este mapa</button><button id="b-lista">Lista de centros poblados</button><button id="b-img">Descargar imagen</button></div>
+    <p class="nota">Producto de investigación, no oficial. Para alertas, consulte al COER Piura, al SENAMHI o a la ANA.</p>
+  </footer>
+</aside>
+
+<div id="leyenda"></div>
+
+<div id="modal" class="oculto"><div class="modal-caja"><button class="cerrar" id="m-cerrar" aria-label="Cerrar">×</button><div id="m-cuerpo"></div></div></div>
+
+<template id="t-leer">
+  <h2>Cómo leer este mapa</h2>
+  <p><b>Qué muestra.</b> Elija un caudal del río en Puente Sánchez Cerro. El mapa pinta de azul, en un solo color, todo lo que puede inundarse con ese caudal, y el cuadro suma sus hectáreas, cultivos, personas y centros poblados.</p>
+  <p><b>Personas y centros poblados.</b> «Personas» son las que viven dentro de lo pintado, comparables con los damnificados de INDECI. «A 1 km o menos del agua» suma además a quienes viven a un kilómetro o menos, comparables con los afectados. Esa cercanía se mide sólo desde hectáreas con curva propia y sin cauce del río: el río crecido entre sus defensas no cuenta como agua cercana. El radio de 1 km se eligió con los daños que INDECI reportó en 2023 y se comprobó con lo que el radar vio en 2017, 2023 y 2026.</p>
+  <p><b>Qué quiere decir «puede inundarse».</b> Cada hectárea tiene una probabilidad de inundarse con su margen de error. El mapa pinta la hectárea si la estimación más alta de ese margen llega al 30 %. Se eligió ese valor porque es el más bajo en el que la mayor parte de lo pintado coincide con la inundación real de 2017 cartografiada por Copernicus; con valores menores, la mayor parte de lo añadido estuvo seco incluso en 2017. Al tocar una hectárea se ve su probabilidad y su margen. La estimación central, la que publica el artículo, es menor y aparece en letra pequeña bajo cada cifra.</p>
+  <p><b>De dónde sale.</b> De 463 imágenes de radar Sentinel-1 tomadas entre 2017 y 2026, comparadas con el caudal de cada día y contrastadas con imágenes PlanetScope. No es un modelo hidráulico.</p>
+  <p><b>Qué no cuenta.</b> Con menos de 100 m³/s el río no desborda: el agua que se ve en esa época es de riego, drenes o lagunas. Tampoco se cuenta el agua que ya está con el río bajo ni la que corre dentro del cauce: se dibujan en gris azulado («río, lagunas y agua permanente») para que el río se vea siempre.</p>
+  <p><b>El tramo con diques.</b> Entre Puente Sánchez Cerro y Cura Mori el río corre entre diques. Con los diques en pie, aun en las crecidas de 2023 y 2026 casi no salió agua del cauce, y eso es lo que muestra el mapa. El mapa no representa desbordes dentro de la ciudad, que el radar no ve, ni roturas de diques, que no dependen sólo del caudal. En 2017 el río se desbordó en Piura y Castilla el 27 de marzo y los diques de Pedregal Chico, Narihualá y Cura Mori se rompieron el 3 de abril.</p>
+  <p><b>Las lagunas del sur y la llanura sin estimación.</b> Ahí no hay estimación por caudal; el mapa azul no las pinta ni las cuenta. Lo que el satélite vio en ellas durante las crecidas grandes se puede ver en la pestaña «Comparar».</p>
+  <p><b>Las curvas.</b> Al tocar una hectárea se ve su curva: cómo sube su probabilidad de inundarse con el caudal, con el margen de error sombreado. La pestaña «Curva de la llanura» suma todas las hectáreas y muestra cuánta superficie puede inundarse con cada caudal.</p>
+  <p><b>Comparar.</b> La pestaña «Comparar con otras fuentes» superpone en rojo, una a la vez, la inundación de 2017 cartografiada por Copernicus, el agua vista en las crecidas grandes o el agua de una fecha concreta. Aquel evento de 2017 incluyó roturas de defensas y lluvias intensas, que el caudal por sí solo no reproduce.</p>
+  <p><b>Límites.</b> El cálculo se hace por hectárea; el dibujo se suaviza para leerse mejor. El radar no ve el agua bajo cultivos altos ni dentro de las ciudades: los pueblos se evalúan por su terreno y su entorno. Entre 2 204 y 3 016 m³/s el mapa es una extrapolación (rayado); por encima de 3 016 no hay mapa. Personas: WorldPop 2020. Cultivos: Mapa Nacional de Superficie Agrícola del MIDAGRI (2024).</p>
+  <p class="nota">Detalle del método, incertidumbre y validación: artículo «Cartografía probabilística de inundaciones del Bajo Piura condicionada al caudal» (en preparación). Inundación de 2017: © Unión Europea, Copernicus Emergency Management Service (EMSR199).</p>
+</template>
+
+<script src="lib/leaflet.js"></script>
+<script src="lib/proj4.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
