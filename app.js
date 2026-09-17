@@ -53,7 +53,7 @@ const TX = {
     ext_obs: (f, q, tipo, dias) => `<b>Caudal observado</b> el ${f}: <b>${q} m³/s</b> (${tipo})${dias > 2 ? ` <span class="rango">· último dato, de hace ${dias} días</span>` : ''}`,
     ext_ver: 'ver en el mapa', ext_esc: 'ver escenario',
     ext_pro: (fu, em, h, q, fm, qb, qa) => `<b>Pronóstico ${fu}</b> (emitido el ${em}, ${h} días): máximo <b>${q} m³/s</b> el ${fm} <span class="rango">(entre ${qb} y ${qa})</span>`,
-    ext_nota: fu => `El mapa muestra lo que puede inundarse si ocurre ese caudal; no es un pronóstico de inundación.${fu ? ' Observado: ' + fu + '.' : ''}`,
+    ext_nota: (fu, dir) => `El mapa muestra lo que puede inundarse si ocurre ese caudal; no es un pronóstico de inundación.${fu ? ` Observado: ${fu} (${dir ? 'consultado al abrir el visor' : 'último dato guardado'}).` : ''}`,
     tipo: t => t,
     central: v => `estimación central: ${v}`, sin_desborde: 'Caudal sin desborde',
     cult_det: (c, wc) => `${c}<br>MIDAGRI 2024 · WorldCover: ${wc} ha`,
@@ -110,7 +110,7 @@ const TX = {
     ext_obs: (f, q, tipo, dias) => `<b>Observed discharge</b> on ${f}: <b>${q} m³/s</b> (${tipo})${dias > 2 ? ` <span class="rango">· latest value, ${dias} days old</span>` : ''}`,
     ext_ver: 'show on map', ext_esc: 'show scenario',
     ext_pro: (fu, em, h, q, fm, qb, qa) => `<b>${fu} forecast</b> (issued ${em}, ${h} days): peak <b>${q} m³/s</b> on ${fm} <span class="rango">(between ${qb} and ${qa})</span>`,
-    ext_nota: fu => `The map shows what can flood if that discharge occurs; it is not a flood forecast.${fu ? ' Observed: ' + fu.replace('estación', 'station') + '.' : ''}`,
+    ext_nota: (fu, dir) => `The map shows what can flood if that discharge occurs; it is not a flood forecast.${fu ? ` Observed: ${fu.replace('estación', 'station')} (${dir ? 'queried when the viewer opened' : 'last stored value'}).` : ''}`,
     tipo: t => t === 'medio diario' ? 'daily mean' : t,
     central: v => `central estimate: ${v}`, sin_desborde: 'No overflow at this discharge',
     cult_det: (c, wc) => `${c}<br>MIDAGRI 2024 · WorldCover: ${wc} ha`,
@@ -321,7 +321,7 @@ function mostrarCaudalExterno() {
     h += `<div>${tr('ext_obs', fmtFecha(o.fecha), fmtQ(o.Q), tr('tipo', o.tipo), dias)}<button data-qext="${o.Q}">${tr('ext_ver')}</button></div>`; }
   for (const p of pr)
     h += `<div>${tr('ext_pro', p.fuente, fmtFecha(p.emitido), p.horizonte_dias, fmtQ(p.Q_max), fmtFecha(p.fecha_max), fmtQ(p.Q_bajo), fmtQ(p.Q_alto))}<button data-qext="${p.Q_max}">${tr('ext_esc')}</button></div>`;
-  h += `<div class="rango">${tr('ext_nota', o ? o.fuente : '')}</div>`;
+  h += `<div class="rango" id="ext-nota" data-modo="${o && o.modo === 'consulta directa' ? 'directo' : 'guardado'}">${tr('ext_nota', o ? o.fuente : '', o && o.modo === 'consulta directa')}</div>`;
   el.innerHTML = h; el.classList.remove('oculto');
   el.querySelectorAll('button[data-qext]').forEach(b => b.onclick = () => fijarQ(Number(b.dataset.qext)));
 }
