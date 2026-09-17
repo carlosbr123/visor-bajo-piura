@@ -10,6 +10,7 @@ const $ = id => document.getElementById(id);
 const fmt = x => (x == null || !isFinite(x)) ? '–' : Math.round(x).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 let EXT = null;   // caudal externo guardado (observado del día y último pronóstico), `datos/caudal_externo.json`
 let CORR = null;   // corrección de GloFAS ajustada en 2014–2020 y su desempeño en 2021–2026 (`datos/glofas_correccion.json`, de glofas_sesgo.py)
+let CORR_S = null;   // lo mismo para SONICS (`datos/sonics_correccion.json`, de sonics_sesgo.py); su pronóstico lo baja la tarea diaria
 const PRON = { glofas: null };   // pronósticos consultados al abrir el visor
 let FQ = ['obs', 'glofas', 'sonics'].includes(new URLSearchParams(location.search).get('fuente')) ? new URLSearchParams(location.search).get('fuente') : 'obs';   // fuente elegida en el bloque de caudal (enlace directo con ?fuente=glofas)
 let OBS = null;   // índice de pases prerenderizados (sólo en la versión publicada; con el servidor local se leen al vuelo)
@@ -56,11 +57,13 @@ const TX = {
     ext_obs: (f, q, tipo, dias) => `<b>Caudal observado</b> el ${f}: <b>${q} m³/s</b> (${tipo})${dias > 2 ? ` <span class="rango">· último dato, de hace ${dias} días</span>` : ''}`,
     ext_ver: 'ver en el mapa', ext_esc: 'ver escenario',
     fq_obs: 'Observado (ANA)', fq_aria: 'Fuente del caudal', fq_sin_obs: 'Sin dato observado disponible en este momento.',
-    pro_glofas: (dias, q, f, a, b, niv) => `<b>Pronóstico GloFAS</b>, próximos ${dias} días: caudal más alto previsto <b>${q} m³/s</b> el ${f} (${niv}) <span class="rango">· la mitad de los escenarios, entre ${a} y ${b}</span>`,
+    pro_pron: (fu, dias, q, f, a, b, niv) => `<b>Pronóstico ${fu}</b>, próximos ${dias} días: caudal más alto previsto <b>${q} m³/s</b> el ${f} (${niv}) <span class="rango">· los escenarios, entre ${a} y ${b}</span>`,
     pro_bajo_am: 'por debajo de la alerta amarilla', pro_ver: 'ver en el mapa',
     pro_extremo: (q, f) => `Escenario más alto de todos: ${q} m³/s el ${f}.`,
-    pro_desempeno: (pod, n, far, ret) => `<b>Cuidado:</b> probado en 2021–2026 con la misma corrección, GloFAS anticipó sólo el ${pod} % de los ${n} días con más de 900 m³/s, y el ${far} % de sus avisos fueron falsos; en 2023 su pico llegó ${ret} días tarde. Úselo como tendencia, no como alerta.`,
+    pro_desempeno: (fu, pod, n, far, ret, cumple) => `<b>${cumple ? 'Desempeño medido' : 'Cuidado'}:</b> probado en 2021–2026 con la misma corrección, ${fu} anticipó el ${pod} % de los ${n} días con más de 900 m³/s, y el ${far} % de sus avisos fueron falsos${Math.abs(ret) >= 5 ? `; en 2023 su pico llegó ${Math.abs(ret)} días ${ret > 0 ? 'tarde' : 'antes'}` : ''}.${cumple ? '' : ' Úselo como tendencia, no como alerta.'}`,
     pro_fuente: (dir, f) => `GloFAS v4 (Copernicus CEMS) vía Open-Meteo (CC BY 4.0), corregido con el caudal observado de 2014–2020 · ${dir ? 'consultado al abrir el visor' : 'último pronóstico guardado, del ' + f}.`,
+    pro_fuente_s: (dir, f) => `SENAMHI, Hidrovisor SONICS, tramo del río en Piura, corregido con el caudal observado de 2014–2020 · pronóstico del ${f}. Resultados referenciales del SENAMHI.`,
+    pro_tope: q => ` La corrección no pasa de ${q} m³/s, el mayor caudal observado.`,
     pro_sin: f => `El pronóstico de ${f} no está disponible en este momento.`,
     pro_aria: 'Pronóstico de caudal: mediana y mitad central de los escenarios, con los umbrales de alerta',
     pro_sonics: '<b>SONICS (SENAMHI)</b> pronostica 10 días para el tramo del río que pasa por Piura, pero sólo dentro de su visor interactivo: no publica esos caudales en un formato que esta página pueda leer ni guarda los pronósticos pasados, que hacen falta para medir su desempeño como el de GloFAS.',
@@ -122,11 +125,13 @@ const TX = {
     ext_obs: (f, q, tipo, dias) => `<b>Observed discharge</b> on ${f}: <b>${q} m³/s</b> (${tipo})${dias > 2 ? ` <span class="rango">· latest value, ${dias} days old</span>` : ''}`,
     ext_ver: 'show on map', ext_esc: 'show scenario',
     fq_obs: 'Observed (ANA)', fq_aria: 'Discharge source', fq_sin_obs: 'No observed value available right now.',
-    pro_glofas: (dias, q, f, a, b, niv) => `<b>GloFAS forecast</b>, next ${dias} days: highest expected discharge <b>${q} m³/s</b> on ${f} (${niv}) <span class="rango">· half of the scenarios between ${a} and ${b}</span>`,
+    pro_pron: (fu, dias, q, f, a, b, niv) => `<b>${fu} forecast</b>, next ${dias} days: highest expected discharge <b>${q} m³/s</b> on ${f} (${niv}) <span class="rango">· scenarios between ${a} and ${b}</span>`,
     pro_bajo_am: 'below the yellow alert', pro_ver: 'show on map',
     pro_extremo: (q, f) => `Highest of all scenarios: ${q} m³/s on ${f}.`,
-    pro_desempeno: (pod, n, far, ret) => `<b>Caution:</b> tested over 2021–2026 with the same correction, GloFAS anticipated only ${pod}% of the ${n} days above 900 m³/s, and ${far}% of its warnings were false; in 2023 its peak came ${ret} days late. Use it as a trend, not as an alert.`,
+    pro_desempeno: (fu, pod, n, far, ret, cumple) => `<b>${cumple ? 'Measured performance' : 'Caution'}:</b> tested over 2021–2026 with the same correction, ${fu} anticipated ${pod}% of the ${n} days above 900 m³/s, and ${far}% of its warnings were false${Math.abs(ret) >= 5 ? `; in 2023 its peak came ${Math.abs(ret)} days ${ret > 0 ? 'late' : 'early'}` : ''}.${cumple ? '' : ' Use it as a trend, not as an alert.'}`,
     pro_fuente: (dir, f) => `GloFAS v4 (Copernicus CEMS) via Open-Meteo (CC BY 4.0), corrected with the observed discharge of 2014–2020 · ${dir ? 'queried when the viewer opened' : 'last stored forecast, from ' + f}.`,
+    pro_fuente_s: (dir, f) => `SENAMHI, SONICS viewer, river reach at Piura, corrected with the observed discharge of 2014–2020 · forecast of ${f}. SENAMHI states its results are indicative.`,
+    pro_tope: q => ` The correction does not go above ${q} m³/s, the highest observed discharge.`,
     pro_sin: f => `The ${f} forecast is not available right now.`,
     pro_aria: 'Discharge forecast: median and central half of the scenarios, with the alert thresholds',
     pro_sonics: '<b>SONICS (SENAMHI)</b> issues 10-day forecasts for the river reach through Piura, but only inside its interactive viewer: it does not publish those discharges in a format this page can read, nor does it keep past forecasts, which are needed to measure its performance as was done for GloFAS.',
@@ -206,6 +211,7 @@ async function cargar() {
   OBS = await fetch('obs/indice.json').then(r => r.ok ? r.json() : null).catch(() => null);
   const directo = caudalSNIRH();   // no detiene la carga del visor
   const pG = fetch('datos/glofas_correccion.json').then(r => r.ok ? r.json() : null).catch(() => null).then(c => { CORR = c; return pronGloFAS(); });
+  CORR_S = await fetch('datos/sonics_correccion.json').then(r => r.ok ? r.json() : null).catch(() => null);
   EXT = await fetch('datos/caudal_externo.json?t=' + Date.now()).then(r => r.ok ? r.json() : null).catch(() => null);   // último dato guardado
   if (OBS) { for (const k in OBS) OBS[k] = new Set(OBS[k]); const n0 = PASES.length; PASES = PASES.filter(p => OBS[p.pase]); if (PASES.length < n0) NOTA_FECHAS = [PASES.length, n0]; }
   else NOTA_FECHAS = 'local';
@@ -387,21 +393,26 @@ function mostrarCaudalExterno() {
       h += `<div>${tr('ext_obs', fmtFecha(o.fecha), fmtQ(o.Q), tr('tipo', o.tipo), dias)}<button data-qext="${o.Q}">${tr('ext_ver')}</button></div>`;
       h += `<div class="rango" id="ext-nota" data-modo="${o.modo === 'consulta directa' ? 'directo' : 'guardado'}">${tr('ext_nota', o.fuente, o.modo === 'consulta directa')}</div>`; }
     else h += `<div>${tr('fq_sin_obs')}</div>`;
-  } else if (FQ === 'glofas') {
-    const gu = ((EXT && EXT.pronosticos) || []).find(p => p.clave === 'glofas' && p.serie && p.serie.length);
-    const p = PRON.glofas || (gu && Object.assign({}, gu, { directo: false, serie: gu.serie.filter(e => e.f >= hoyLima()) }));
-    if (!p || !p.serie.length) h += `<div>${tr('pro_sin', 'GloFAS')}</div>`;
-    else {
+  } else {
+    const gu = ((EXT && EXT.pronosticos) || []).find(p => p.clave === FQ && p.serie && p.serie.length);
+    const p = (FQ === 'glofas' && PRON.glofas) || (gu && Object.assign({}, gu, { directo: false, serie: gu.serie.filter(e => e.f >= hoyLima()) }));
+    const co = FQ === 'glofas' ? CORR : CORR_S, nombre = FQ === 'glofas' ? 'GloFAS' : 'SONICS';
+    if (!p || !p.serie.length) {
+      h += `<div>${tr('pro_sin', nombre)}</div>`;
+      if (FQ === 'sonics') h += `<div class="rango">${tr('pro_sonics')} <a href="https://www.senamhi.gob.pe/sonics/" target="_blank" rel="noopener">${tr('pro_sonics_ir')}</a></div>`;
+    } else {
       let mx = p.serie[0], ex = p.serie[0];
       for (const e of p.serie) { if (e.med > mx.med) mx = e; if ((e.max == null ? -1 : e.max) > (ex.max == null ? -1 : ex.max)) ex = e; }
-      h += `<div>${tr('pro_glofas', p.serie.length, fmtQ(mx.med), fmtFecha(mx.f), fmtQ(mx.p25), fmtQ(mx.p75), nivelDe(mx.med))}<button data-qext="${mx.med}">${tr('pro_ver')}</button></div>`;
+      h += `<div>${tr('pro_pron', nombre, p.serie.length, fmtQ(mx.med), fmtFecha(mx.f), fmtQ(mx.p25 != null ? mx.p25 : mx.min), fmtQ(mx.p75 != null ? mx.p75 : mx.max), nivelDe(mx.med))}<button data-qext="${mx.med}">${tr('pro_ver')}</button></div>`;
       h += graficoPron(p.serie);
       if (ex.max != null) h += `<div class="rango">${tr('pro_extremo', fmtQ(ex.max), fmtFecha(ex.f))}</div>`;
-      const pb = CORR && CORR.prueba_2021_2026;
-      if (pb) h += `<div class="desempeno">${tr('pro_desempeno', Math.round(pb.POD_900 * 100), pb.dias_obs_900, Math.round(pb.FAR_900 * 100), pb.retraso_pico_2023_dias)}</div>`;
-      h += `<div class="rango" id="pro-nota" data-modo="${p.directo ? 'directo' : 'guardado'}">${tr('pro_fuente', p.directo, fmtFecha(p.consultado))} ${tr('ext_nota', '')}</div>`;
+      const pb = co && co.prueba_2021_2026;
+      if (pb) h += `<div class="desempeno">${tr('pro_desempeno', nombre, Math.round(pb.POD_900 * 100), pb.dias_obs_900, Math.round(pb.FAR_900 * 100), pb.retraso_pico_2023_dias, co.criterio_cumplido === true)}</div>`;
+      const tope = co && co.qo && co.qo[co.qo.length - 1];
+      h += `<div class="rango" id="pro-nota" data-modo="${p.directo ? 'directo' : 'guardado'}">${tr(FQ === 'glofas' ? 'pro_fuente' : 'pro_fuente_s', p.directo, fmtFecha(p.consultado))}` +
+        `${mx.med >= 0.7 * tope ? tr('pro_tope', fmtQ(tope)) : ''} ${tr('ext_nota', '')}</div>`;
     }
-  } else h += `<div>${tr('pro_sonics')} <a href="https://www.senamhi.gob.pe/sonics/" target="_blank" rel="noopener">${tr('pro_sonics_ir')}</a></div>`;
+  }
   el.innerHTML = h; el.classList.remove('oculto');
   el.querySelectorAll('button[data-qext]').forEach(b => b.onclick = () => fijarQ(Number(b.dataset.qext)));
   el.querySelectorAll('button[data-fq]').forEach(b => b.onclick = () => { FQ = b.dataset.fq; mostrarCaudalExterno(); });
