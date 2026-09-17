@@ -23,6 +23,11 @@ jobs:
       - run: pip install requests pandas openpyxl playwright
       - run: python -m playwright install --with-deps chromium
       - run: python actualizar_caudal.py
+      - name: ¿Responden los servidores peruanos?
+        run: |
+          for u in https://www.senamhi.gob.pe/sonics/ https://www.senamhi.gob.pe/ https://snirh.ana.gob.pe/ https://www.ana.gob.pe/; do
+            echo "$u -> $(curl -sS -m 25 -o /dev/null -w '%{http_code} en %{time_total}s' "$u" 2>&1 || true)"
+          done
       - name: Pronóstico de SONICS (SENAMHI)
         run: python actualizar_sonics.py
       - name: Guardar si cambió
