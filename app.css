@@ -5,7 +5,11 @@ html, body { height: 100%; margin: 0; font-family: "Segoe UI", system-ui, Arial,
 
 #tarjeta { position: absolute; top: 12px; left: 12px; width: 360px; max-height: calc(100% - 24px); overflow-y: auto; z-index: 1000;
   background: var(--fondo); border-radius: 12px; box-shadow: 0 4px 18px rgba(0,0,0,.18); padding: 14px 16px; box-sizing: border-box; }
-h1 { font-size: 19px; margin: 0; }
+h1 { font-size: 19px; margin: 0; padding-right: 76px; }
+header { position: relative; }
+.idioma { position: absolute; top: 0; right: 0; display: flex; border: 1px solid #c9d3de; border-radius: 999px; overflow: hidden; }
+.idioma button { border: 0; background: white; color: #455; font-size: 12px; font-weight: 600; padding: 3px 9px; cursor: pointer; }
+.idioma button.activa { background: #1565c0; color: white; }
 .sub { margin: 2px 0 10px; font-size: 13px; color: var(--suave); }
 .control { margin: 10px 0 14px; }
 .etq { font-size: 13px; color: var(--suave); margin-bottom: 4px; }
