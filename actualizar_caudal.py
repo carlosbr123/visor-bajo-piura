@@ -25,13 +25,13 @@ LIMA = timezone(timedelta(hours=-5))
 def ultimo():
     for intento in range(3):
         try:
-            r = requests.post(URL, data=json.dumps({"pIdEstacion": ESTACION, "pIdOperador": OPERADOR}), headers=CAB, timeout=90)
+            r = requests.post(URL, data=json.dumps({"pIdEstacion": ESTACION, "pIdOperador": OPERADOR}), headers=CAB, timeout=25)
             r.raise_for_status()
             leer = lambda s: json.loads(re.sub(r'"data":\s*}', '"data":[]}', s))   # el servicio devuelve `"data":}` en un año vacío
             d = leer(r.text)["d"]; d = leer(d) if isinstance(d, str) else d
             break
         except Exception as e:
-            print("intento", intento + 1, "falló:", repr(e)[:150]); time.sleep(30)
+            print("intento", intento + 1, "falló:", repr(e)[:150]); time.sleep(10)
     else:
         return None
     cfg = d[0] if isinstance(d, list) else d

@@ -1,8 +1,9 @@
 name: Caudal del día (SNIRH)
 
-# El visor pide el caudal del día al SNIRH directamente desde el navegador de quien lo abre. Esta tarea sólo renueva el último
-# dato guardado (datos/caudal_externo.json), que el visor muestra si esa consulta falla. En la prueba del 17-sep-2026 el SNIRH
-# no respondió a los servidores de GitHub (tiempo de espera agotado): en ese caso la tarea termina sin cambiar nada.
+# Renueva el pronóstico de GloFAS (Open-Meteo, que sí responde aquí) y, si alguna vez vuelve a responder, el caudal observado del
+# SNIRH. Prueba del 17-sep-2026 desde los servidores de GitHub: www.senamhi.gob.pe, snirh.ana.gob.pe y www.ana.gob.pe agotan el
+# tiempo de espera a los 25 s. Por eso el visor pide el observado al SNIRH desde el navegador de quien lo abre, y el pronóstico de
+# SONICS sólo puede bajarse desde una máquina en el Perú (publicacion/actualizar_sonics.py).
 on:
   schedule:
     - cron: "0 13 * * *"      # 08:00 en Perú
@@ -20,16 +21,8 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - run: pip install requests pandas openpyxl playwright
-      - run: python -m playwright install --with-deps chromium
+      - run: pip install requests
       - run: python actualizar_caudal.py
-      - name: ¿Responden los servidores peruanos?
-        run: |
-          for u in https://www.senamhi.gob.pe/sonics/ https://www.senamhi.gob.pe/ https://snirh.ana.gob.pe/ https://www.ana.gob.pe/; do
-            echo "$u -> $(curl -sS -m 25 -o /dev/null -w '%{http_code} en %{time_total}s' "$u" 2>&1 || true)"
-          done
-      - name: Pronóstico de SONICS (SENAMHI)
-        run: python actualizar_sonics.py
       - name: Guardar si cambió
         run: |
           if ! git diff --quiet -- datos/caudal_externo.json datos/sonics_archivo.json; then
