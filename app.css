@@ -39,6 +39,12 @@ input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 
 .aviso.ext { background: #eef5fc; border-left-color: #1565c0; font-size: 12.5px; line-height: 1.45; }
 .aviso.ext button { border: 1px solid #1565c0; background: white; color: #0d47a1; border-radius: 6px; padding: 1px 7px; font-size: 12px; cursor: pointer; margin-left: 4px; }
 .aviso.ext .rango { color: #555; }
+.aviso.ext .fuentes { margin-bottom: 7px; background: white; }
+.aviso.ext .fuentes button { margin-left: 0; border: none; border-radius: 0; background: #f5f7f9; color: var(--texto); font-size: 12px; padding: 5px 2px; }
+.aviso.ext .fuentes button + button { border-left: 1px solid var(--borde); }
+.aviso.ext .fuentes button.activo { background: var(--agua); color: white; font-weight: 600; }
+.aviso.ext svg { width: 100%; height: auto; display: block; margin: 6px 0 2px; }
+.aviso.ext .desempeno { background: #fff4e5; border-left: 3px solid #e07b00; padding: 4px 7px; margin: 6px 0; border-radius: 3px; }
 
 #resumen { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .caja { border: 1px solid var(--borde); border-radius: 10px; padding: 9px 10px; }
