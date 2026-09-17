@@ -25,8 +25,8 @@ jobs:
       - name: Guardar si cambió
         run: |
           if ! git diff --quiet -- datos/caudal_externo.json; then
-            git config user.name "actualizacion-automatica"
-            git config user.email "actions@users.noreply.github.com"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add datos/caudal_externo.json
             git commit -m "Caudal del día"
             git push
