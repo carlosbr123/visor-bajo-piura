@@ -1,5 +1,5 @@
 {
- "generado": "2026-09-19T08:04",
+ "generado": "2026-09-20T08:04",
  "observado": {
   "fuente": "ANA, SNIRH, estación Puente Sánchez Cerro",
   "fecha": "2026-09-16",
@@ -66,16 +66,8 @@
   {
    "clave": "glofas",
    "fuente": "GloFAS v4 (Copernicus CEMS) vía Open-Meteo, corregido con 2014–2020",
-   "consultado": "2026-09-19",
+   "consultado": "2026-09-20",
    "serie": [
-    {
-     "f": "2026-09-19",
-     "med": 0.0,
-     "p25": 0.0,
-     "p75": 0.0,
-     "min": 0.0,
-     "max": 0.0
-    },
     {
      "f": "2026-09-20",
      "med": 0.0,
@@ -299,6 +291,14 @@
      "p75": 4.9,
      "min": 0.0,
      "max": 21.6
+    },
+    {
+     "f": "2026-10-18",
+     "med": 2.0,
+     "p25": 0.2,
+     "p75": 5.0,
+     "min": 0.0,
+     "max": 23.7
     }
    ]
   }
