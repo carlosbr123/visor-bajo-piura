@@ -1,9 +1,9 @@
 {
- "generado": "2026-11-10T08:10",
+ "generado": "2026-11-10T15:05",
  "observado": {
   "fuente": "ANA, SNIRH, estación Puente Sánchez Cerro",
-  "fecha": "2026-10-04",
-  "Q": 0.0,
+  "fecha": "2026-11-09",
+  "Q": 57.9,
   "tipo": "medio diario",
   "modo": "servicio web del SNIRH (actualización diaria automática)"
  },
